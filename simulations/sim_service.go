@@ -18,7 +18,6 @@ import (
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/platform"
 	fakePlatform "gitlab.com/ignitionrobotics/web/cloudsim/pkg/platform/implementations/fake"
 	platformManager "gitlab.com/ignitionrobotics/web/cloudsim/pkg/platform/manager"
-	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/runsim"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/simulations"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/simulator"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/store"
@@ -33,6 +32,7 @@ import (
 	subtapp "gitlab.com/ignitionrobotics/web/subt/internal/subt/application"
 	subtSimulator "gitlab.com/ignitionrobotics/web/subt/internal/subt/simulator"
 	"gitlab.com/ignitionrobotics/web/subt/internal/subt/summaries"
+	"gitlab.com/ignitionrobotics/web/subt/pkg/runsim"
 	"gitlab.com/ignitionrobotics/web/subt/queues"
 	"net/http"
 	"strconv"
@@ -309,19 +309,11 @@ func (s *Service) Debug(user *users.User, groupID simulations.GroupID) (interfac
 	if !s.userAccessor.IsSystemAdmin(*user.Username) {
 		return nil, ign.NewErrorMessage(ign.ErrorUnauthorized)
 	}
-	sim, err := s.applicationServices.Simulations().Get(groupID)
+	_, err := s.applicationServices.Simulations().Get(groupID)
 	if err != nil {
 		return nil, ign.NewErrorMessageWithBase(ign.ErrorSimGroupNotFound, err)
 	}
-	sel := sim.GetPlatform()
-	if sel == nil {
-		return nil, ign.NewErrorMessage(ign.ErrorIDNotFound)
-	}
-	p, err := s.platforms.Platform(*sel)
-	if err != nil {
-		return nil, ign.NewErrorMessageWithBase(ign.ErrorSimGroupNotFound, err)
-	}
-	return p.RunningSimulations().Debug(groupID)
+	return s.applicationServices.RunningSimulations().Debug(groupID)
 }
 
 // ReconnectWebsocket reconnects a list of simulation to their respective websocket server
@@ -340,16 +332,11 @@ func (s *Service) ReconnectWebsocket(user *users.User, groupID simulations.Group
 		return nil, ign.NewErrorMessage(ign.ErrorMissingField)
 	}
 
-	p, err := s.platforms.Platform(*sel)
-	if err != nil {
-		return nil, ign.NewErrorMessageWithBase(ign.ErrorUnexpected, err)
-	}
-
-	if !p.RunningSimulations().Exists(sim.GetGroupID()) {
+	if !s.applicationServices.RunningSimulations().Exists(sim.GetGroupID()) {
 		return nil, ign.NewErrorMessage(ign.ErrorUnexpected)
 	}
 
-	if err = p.RunningSimulations().Reconnect(sim.GetGroupID()); err != nil {
+	if err = s.applicationServices.RunningSimulations().Reconnect(sim.GetGroupID()); err != nil {
 		return nil, ign.NewErrorMessageWithBase(ign.ErrorUnexpected, err)
 	}
 
@@ -642,22 +629,8 @@ func (s *Service) rebuildState(ctx context.Context, db *gorm.DB) error {
 		}
 
 		if d.HasStatus(simulations.StatusRunning) {
-			// Get Platform
-			p, err := platformManager.GetSimulationPlatform(s.platforms, &d)
-			if err != nil {
-				pName := "nil"
-				if d.Platform != nil {
-					pName = *d.Platform
-				}
-				s.logger.Warning(fmt.Sprintf("rebuildState -- Cannot find platform [%s] for simulation with "+
-					"GroupID [%s]. Marking with error", pName, groupID))
-				// if the SimulationDeployment DB record has 'running' status but there is no matching
-				// running Pod in the cluster then we have an inconsistenty. Mark it as error.
-				d.setErrorStatus(db, simErrorServerRestart)
-			}
-
 			// Verify that the simulation exists
-			if !p.RunningSimulations().Exists(d.GetGroupID()) {
+			if !s.applicationServices.RunningSimulations().Exists(d.GetGroupID()) {
 				s.logger.Warning(fmt.Sprintf("rebuildState -- GroupID [%s] expected to be Running "+
 					"in DB but there is no matching Pod running. Marking with error", groupID))
 				// if the SimulationDeployment DB record has 'running' status but there is no matching
@@ -816,25 +789,23 @@ func (s *Service) StopExpiredSimulationsCleaner() {
 // to check if they were alive more than expected, and in that case, schedules their termination.
 func (s *Service) checkForExpiredSimulations(ctx context.Context) error {
 	s.logger.Debug("Checking for expired simulations...")
-	for _, p := range s.platforms.Platforms(nil) {
-		rss := p.RunningSimulations().ListExpiredAndFinishedSimulations()
-		for _, rs := range rss {
-			dep, err := GetSimulationDeployment(s.DB, rs.GroupID.String())
-			if err != nil {
-				s.logger.Error(fmt.Sprintf("Error while trying to get Simulation from DB: %s", rs.GroupID.String()), err)
-				continue
-			}
+	rss := s.applicationServices.RunningSimulations().ListExpiredAndFinishedSimulations()
+	for _, rs := range rss {
+		dep, err := GetSimulationDeployment(s.DB, rs.GroupID.String())
+		if err != nil {
+			s.logger.Error(fmt.Sprintf("Error while trying to get Simulation from DB: %s", rs.GroupID.String()), err)
+			continue
+		}
 
-			// Add a 'stop simulation' request to the Terminator Jobs-Pool.
-			if err := s.scheduleTermination(ctx, s.DB, dep); err != nil {
-				s.logger.Error(fmt.Sprintf("Error while trying to schedule automatic termination of Simulation: %s", rs.GroupID.String()), err)
-			} else {
-				reason := "expired"
-				if rs.Finished {
-					reason = "finished"
-				}
-				s.logger.Info(fmt.Sprintf("Scheduled automatic termination of %s simulation: %s", reason, rs.GroupID.String()))
+		// Add a 'stop simulation' request to the Terminator Jobs-Pool.
+		if err := s.scheduleTermination(ctx, s.DB, dep); err != nil {
+			s.logger.Error(fmt.Sprintf("Error while trying to schedule automatic termination of Simulation: %s", rs.GroupID.String()), err)
+		} else {
+			reason := "expired"
+			if rs.Finished {
+				reason = "finished"
 			}
+			s.logger.Info(fmt.Sprintf("Scheduled automatic termination of %s simulation: %s", reason, rs.GroupID.String()))
 		}
 	}
 
@@ -1499,7 +1470,7 @@ func (s *Service) createRunningSimulation(ctx context.Context, tx *gorm.DB, dep 
 		return err
 	}
 
-	err = p.RunningSimulations().Add(dep.GetGroupID(), rs, t)
+	err = s.applicationServices.RunningSimulations().Add(dep.GetGroupID(), rs, t)
 	if err != nil {
 		return err
 	}

@@ -13,12 +13,10 @@ import (
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/application"
 	email "gitlab.com/ignitionrobotics/web/cloudsim/pkg/email/implementations/ses"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/machines/implementations/ec2"
-	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/migrations"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/mock"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/orchestrator/components/spdy"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/orchestrator/implementations/kubernetes"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/platform"
-	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/runsim"
 	secrets "gitlab.com/ignitionrobotics/web/cloudsim/pkg/secrets/implementations/kubernetes"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/simulations"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/storage/implementations/s3"
@@ -34,6 +32,8 @@ import (
 	"gitlab.com/ignitionrobotics/web/subt/internal/subt/simulator/jobs"
 	"gitlab.com/ignitionrobotics/web/subt/internal/subt/summaries"
 	"gitlab.com/ignitionrobotics/web/subt/internal/subt/tracks"
+	"gitlab.com/ignitionrobotics/web/subt/pkg/migrations"
+	"gitlab.com/ignitionrobotics/web/subt/pkg/runsim"
 	legacy "gitlab.com/ignitionrobotics/web/subt/simulations"
 	"gopkg.in/go-playground/validator.v9"
 	apiv1 "k8s.io/api/core/v1"
@@ -160,13 +160,12 @@ func TestStopSimulationAction(t *testing.T) {
 
 	// Initialize platform components
 	c := platform.Components{
-		Machines:           ec2Machines,
-		Storage:            s3.NewStorage(storageAPI, logger),
-		Cluster:            cluster,
-		Store:              configStore,
-		Secrets:            secrets,
-		RunningSimulations: runsimManager,
-		EmailSender:        email.NewEmailSender(emailAPI, logger),
+		Machines:    ec2Machines,
+		Storage:     s3.NewStorage(storageAPI, logger),
+		Cluster:     cluster,
+		Store:       configStore,
+		Secrets:     secrets,
+		EmailSender: email.NewEmailSender(emailAPI, logger),
 	}
 
 	// Initialize platform
