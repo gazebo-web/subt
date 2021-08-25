@@ -1,0 +1,23 @@
+#
+#                                Ignition Robotics
+version: '3.7'
+services:
+  db:
+    image: mysql
+    container_name: ign_db
+    ports:
+      - '3306:3306'
+    restart: always
+    env_file:
+      - db.env
+
+  cloudsim:
+    build:
+      context: .
+      dockerfile: test.Dockerfile
+    container_name: cloudsim_test
+    depends_on:
+      - db
+    env_file:
+      - .env
+    restart: always
