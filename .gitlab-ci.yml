@@ -80,7 +80,7 @@ proto:
     - protoc --proto_path=. --go_out=. ignition/msgs/*.proto
   artifacts:
     paths:
-      - /builds/ignitionrobotics/web/cloudsim/ign-transport/proto/ignition/msgs/*.go
+      - /builds/ignitionrobotics/web/subt/ign-transport/proto/ignition/msgs/*.go
     expire_in: 1 month
   tags:
     - gitlab-org
