@@ -842,6 +842,27 @@ var LaunchSimulation = func(s *Service, ctx context.Context,
 // ///////////////////////////////////////////////////////////////////////
 // ///////////////////////////////////////////////////////////////////////
 
+// updateSimulationStartValues sets the fields of a SimulationDeployment based on  starting simulation.
+func (s *Service) updateSimulationStartValues(simDep *SimulationDeployment, p platform.Platform) error {
+	// Update the current platform
+	ignErr := simDep.updatePlatform(s.DB, p.GetName())
+	if ignErr != nil {
+		err := ignErr.BaseError
+		s.logger.Debug("Failed to update simulation deployment:", err)
+		return err
+	}
+
+	// Update the LaunchedAt time to right now
+	ignErr = simDep.updateLaunchedAt(s.DB, time.Now())
+	if ignErr != nil {
+		err := ignErr.BaseError
+		s.logger.Debug("Failed to update simulation deployment:", err)
+		return err
+	}
+
+	return nil
+}
+
 // workerStartSimulation is a thread pool worker in charge of launching simulations.
 func (s *Service) workerStartSimulation(payload interface{}) {
 	groupID, ok := payload.(string)
@@ -860,8 +881,9 @@ func (s *Service) workerStartSimulation(payload interface{}) {
 	// Cycle through platforms and launch simulations
 	platforms := s.getPlatforms(simDep)
 	for _, p := range platforms {
-		// Update SimulationDeployment platform
-		simDep.updatePlatform(s.DB, p.GetName())
+		if err := s.updateSimulationStartValues(simDep, p); err != nil {
+			break
+		}
 
 		err = s.simulator.Start(s.baseCtx, p, simulations.GroupID(groupID))
 		if err == nil {
@@ -870,7 +892,7 @@ func (s *Service) workerStartSimulation(payload interface{}) {
 			em := simDep.updateSimDepStatus(s.DB, simPending)
 			if em != nil {
 				err = em.BaseError
-				s.logger.Debug("Failed update simulation deployment status:", err)
+				s.logger.Debug("Failed to update simulation deployment status:", err)
 				break
 			}
 
@@ -1057,7 +1079,7 @@ func (s *Service) StartSimulationAsync(ctx context.Context,
 	// Dev note: in this case we check 'after' creating the record in the DB to make
 	// sure that in case of a race condition then both records are added with pending state
 	// and one of those (or both) can be rejected immediately.
-	if em := s.checkValidNumberOfSimulations(ctx, tx, simDep); em != nil {
+	if em := s.checkValidNumberOfSimulations(ctx, tx, simDep); !isAdmin && em != nil {
 		// In case of error we delete the simulation request from DB and exit.
 		tx.Model(simDep).Update(SimulationDeployment{
 			DeploymentStatus: simRejected.ToPtr(),
@@ -1443,11 +1465,6 @@ func (s *Service) createRunningSimulation(ctx context.Context, tx *gorm.DB, dep 
 		return err
 	}
 
-	_, maxSimSeconds, err := s.getGazeboWorldStatsTopicAndLimit(ctx, tx, dep)
-	if err != nil {
-		return err
-	}
-
 	// TODO: warmup topic is not a generic concept as it is specific of SubT. Need to move to a SubT custom code.
 	// TODO: Consider allowing Applications to configure the RunningSimulation instance.
 	worldWarmupTopic, err := s.getGazeboWorldWarmupTopic(ctx, tx, dep)
@@ -1461,7 +1478,7 @@ func (s *Service) createRunningSimulation(ctx context.Context, tx *gorm.DB, dep 
 		return err
 	}
 
-	rs := runsim.NewRunningSimulation(dep.GetGroupID(), int64(maxSimSeconds), dep.GetValidFor())
+	rs := runsim.NewRunningSimulation(dep)
 
 	err = t.Subscribe(worldWarmupTopic, func(message transport.Message) {
 		_ = rs.ReadWarmup(context.Background(), message)
