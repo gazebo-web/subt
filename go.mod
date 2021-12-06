@@ -19,7 +19,7 @@ require (
 	github.com/solo-io/gloo v1.4.12
 	github.com/solo-io/solo-kit v0.13.8-patch4
 	github.com/stretchr/testify v1.7.0
-	gitlab.com/ignitionrobotics/web/cloudsim v0.0.0-20211206150539-6d9d54283955 // indirect
+	gitlab.com/ignitionrobotics/web/cloudsim v0.0.0-20211206150539-6d9d54283955
 	gitlab.com/ignitionrobotics/web/fuelserver v0.0.0-20200916210816-e30ab5ed9d47
 	gitlab.com/ignitionrobotics/web/ign-go v0.0.0-20211109185912-2322af1b387c
 	gopkg.in/go-playground/validator.v9 v9.31.0
