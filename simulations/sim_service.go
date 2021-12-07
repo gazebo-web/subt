@@ -135,6 +135,7 @@ const (
 	podGroupIDLabelKey    = "cloudsim-group-id"
 	cloudsimTagLabelKey   = "cloudsim"
 	cloudsimTagLabelValue = "true"
+	creditsApplication    = "osrf"
 )
 
 var (
