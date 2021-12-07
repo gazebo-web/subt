@@ -17,7 +17,7 @@ var ChargeUser = &actions.Job{
 	OutputType: actions.GetJobDataType(&state.StopSimulation{}),
 }
 
-// setRate is the execute function of the ChargeUser job that will charge a user for the time a simulation has been running.
+// chargeUser is the execute function of the ChargeUser job that will charge a user for the time a simulation has been running.
 func chargeUser(store actions.Store, tx *gorm.DB, deployment *actions.Deployment, value interface{}) (interface{}, error) {
 	s := store.State().(*state.StopSimulation)
 
