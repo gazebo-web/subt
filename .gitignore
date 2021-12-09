@@ -1,12 +1,23 @@
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
 
-# Test binary, build with `go test -c`
-*.test
+*.pb.go
+*.orig
+bin/
+*.pem
+test_model*
+.env.bash
+.env
+db.env
+.idea/
+.elasticbeanstalk
+vendor/
+.vgenable
+coverage.tx
+kube_config
+*.sql
 
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
+# Default ignored files
+.idea/workspace.xml
