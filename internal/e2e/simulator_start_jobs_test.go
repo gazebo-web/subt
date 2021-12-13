@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/actions"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/application"
+	cloud "gitlab.com/ignitionrobotics/web/cloudsim/pkg/cloud/aws"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/machines/implementations/ec2"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/mock"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/orchestrator/components/spdy"
@@ -61,8 +62,9 @@ func TestStartSimulationAction(t *testing.T) {
 	// Initialize mock for EC2
 	ec2api := mock.NewEC2()
 	ec2Machines, err := ec2.NewMachines(&ec2.NewInput{
-		API:    ec2api,
-		Logger: logger,
+		API:            ec2api,
+		CostCalculator: cloud.NewCostCalculatorEC2(nil),
+		Logger:         logger,
 		Zones: []ec2.Zone{
 			{
 				Zone:     "zone-0",
@@ -160,7 +162,7 @@ func TestStartSimulationAction(t *testing.T) {
 	userService, err := users.NewService(ctx, &perm, db, "sysadmin")
 	require.NoError(t, err)
 
-	baseApp := application.NewServices(simService, userService)
+	baseApp := application.NewServices(simService, userService, nil)
 
 	// Initialize track repository.
 	trackRepository := tracks.NewRepository(db, logger)
