@@ -23,19 +23,6 @@ variables:
 .setup_db: &setup_db
   - mysql -u root -proot -h mysql -e "CREATE DATABASE usersdb_test"
 
-# Deploys to a Kubernetes cluster.
-# $IMAGE_TAG must be set before calling this.
-.deploy_kubernetes: &deploy_kubernetes
-  - export CONTAINER_IMAGE="$CI_REGISTRY_IMAGE:$IMAGE_TAG"
-  - export APP_SELECTOR="$APPLICATION_NAME-primary"
-  - export HEY_CMD="hey -z 15s -q 5 -c 2 http://$APPLICATION_NAME-canary.$APPLICATION_ENVIRONMENT.svc.cluster.local/healthz"
-  - envsubst < "./deployments/00-namespace.yaml"
-  - envsubst < "./deployments/00-namespace.yaml"  | kubectl apply -f -
-  - envsubst < "./deployments/01-deployment.yaml"
-  - envsubst < "./deployments/01-deployment.yaml" | kubectl apply -f -
-  - envsubst < "./deployments/02-blue-green.yaml"
-  - envsubst < "./deployments/02-blue-green.yaml" | kubectl apply -f -
-
 .set_image_tag_to_branch_name: &set_image_tag_to_branch_name
   - IMAGE_TAG=$(echo $CI_COMMIT_REF_NAME | sed s@/@-@)
 
@@ -67,7 +54,6 @@ stages:
   - format
   - test
   - package
-  - deploy
 
 ##########################################################
 # Installing stage
