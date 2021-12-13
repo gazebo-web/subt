@@ -23,12 +23,12 @@ import (
 	"github.com/go-playground/form"
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
-	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/migrations"
 	useracc "gitlab.com/ignitionrobotics/web/cloudsim/pkg/users"
 	"gitlab.com/ignitionrobotics/web/fuelserver/permissions"
 	"gitlab.com/ignitionrobotics/web/ign-go"
 	"gitlab.com/ignitionrobotics/web/ign-go/monitoring/prometheus"
 	"gitlab.com/ignitionrobotics/web/subt/globals"
+	"gitlab.com/ignitionrobotics/web/subt/pkg/migrations"
 	sim "gitlab.com/ignitionrobotics/web/subt/simulations"
 	"gopkg.in/go-playground/validator.v9"
 	"log"
@@ -137,6 +137,19 @@ func init() {
 	// Health
 	m := mainRouter.PathPrefix("/").Subrouter()
 	s.ConfigureRouterWithRoutes("/", m, sim.MonitoringRoutes)
+
+	// Profile
+	var cpuProfileEnabled bool
+	// Set the global configuration to true if the env var is set to true
+	if value, err := ign.ReadEnvVar("IGN_CPU_PROFILE_ENABLED"); err == nil && strings.ToLower(value) == "true" {
+		cpuProfileEnabled = true
+	}
+
+	if cpuProfileEnabled {
+		profileRouter := mainRouter.PathPrefix("/").Subrouter()
+		s.ConfigureRouterWithRoutes("/", profileRouter, sim.ProfileRoutes)
+	}
+
 	// Set router.
 	// Because a monitoring provider was set, this call will add monitoring routes as well as setting the router
 	globals.Server.SetRouter(mainRouter)

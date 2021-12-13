@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"github.com/stretchr/testify/mock"
-	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/migrations"
 	ignws "gitlab.com/ignitionrobotics/web/cloudsim/pkg/transport/ign"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/users"
 	"gitlab.com/ignitionrobotics/web/ign-go"
 	"gitlab.com/ignitionrobotics/web/ign-go/testhelpers"
 	"gitlab.com/ignitionrobotics/web/subt/globals"
+	"gitlab.com/ignitionrobotics/web/subt/pkg/migrations"
 	sim "gitlab.com/ignitionrobotics/web/subt/simulations"
 	"log"
 	"os"

@@ -13,12 +13,10 @@ import (
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/application"
 	email "gitlab.com/ignitionrobotics/web/cloudsim/pkg/email/implementations/ses"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/machines/implementations/ec2"
-	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/migrations"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/mock"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/orchestrator/components/spdy"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/orchestrator/implementations/kubernetes"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/platform"
-	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/runsim"
 	secrets "gitlab.com/ignitionrobotics/web/cloudsim/pkg/secrets/implementations/kubernetes"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/simulations"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/storage/implementations/s3"
@@ -34,6 +32,8 @@ import (
 	"gitlab.com/ignitionrobotics/web/subt/internal/subt/simulator/jobs"
 	"gitlab.com/ignitionrobotics/web/subt/internal/subt/summaries"
 	"gitlab.com/ignitionrobotics/web/subt/internal/subt/tracks"
+	"gitlab.com/ignitionrobotics/web/subt/pkg/migrations"
+	"gitlab.com/ignitionrobotics/web/subt/pkg/runsim"
 	legacy "gitlab.com/ignitionrobotics/web/subt/simulations"
 	"gopkg.in/go-playground/validator.v9"
 	apiv1 "k8s.io/api/core/v1"
@@ -160,13 +160,12 @@ func TestStopSimulationAction(t *testing.T) {
 
 	// Initialize platform components
 	c := platform.Components{
-		Machines:           ec2Machines,
-		Storage:            s3.NewStorage(storageAPI, logger),
-		Cluster:            cluster,
-		Store:              configStore,
-		Secrets:            secrets,
-		RunningSimulations: runsimManager,
-		EmailSender:        email.NewEmailSender(emailAPI, logger),
+		Machines:    ec2Machines,
+		Storage:     s3.NewStorage(storageAPI, logger),
+		Cluster:     cluster,
+		Store:       configStore,
+		Secrets:     secrets,
+		EmailSender: email.NewEmailSender(emailAPI, logger),
 	}
 
 	// Initialize platform
@@ -185,7 +184,7 @@ func TestStopSimulationAction(t *testing.T) {
 	userService, err := users.NewService(ctx, &perm, db, "sysadmin")
 	require.NoError(t, err)
 
-	baseApp := application.NewServices(simService, userService)
+	baseApp := application.NewServices(simService, userService, nil)
 
 	// Initialize track repository.
 	trackRepository := tracks.NewRepository(db, logger)
@@ -217,7 +216,7 @@ func TestStopSimulationAction(t *testing.T) {
 	// Initialize subt application.
 	app := subtapp.NewServices(baseApp, trackService, summaryService)
 
-	rs := runsim.NewRunningSimulation(sim.GetGroupID(), int64(maxSimSeconds), sim.GetValidFor())
+	rs := runsim.NewRunningSimulation(sim)
 	ws := ignws.NewPubSubTransporterMock()
 
 	ws.On("Disconnect").Return(error(nil))

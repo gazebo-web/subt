@@ -4,10 +4,10 @@ import (
 	"context"
 	"github.com/jinzhu/gorm"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/actions"
-	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/runsim"
 	"gitlab.com/ignitionrobotics/web/cloudsim/pkg/transport"
 	subt "gitlab.com/ignitionrobotics/web/subt/internal/subt/simulations"
 	"gitlab.com/ignitionrobotics/web/subt/internal/subt/simulator/state"
+	"gitlab.com/ignitionrobotics/web/subt/pkg/runsim"
 )
 
 // AddRunningSimulation is job in charge of adding a running simulation to the list of running simulations.
@@ -25,11 +25,11 @@ var AddRunningSimulation = &actions.Job{
 func revertAddingRunningSimulation(store actions.Store, tx *gorm.DB, deployment *actions.Deployment, value interface{}, _ error) (interface{}, error) {
 	s := store.State().(*state.StartSimulation)
 
-	if s.Platform().RunningSimulations().GetTransporter(s.GroupID).IsConnected() {
-		s.Platform().RunningSimulations().Free(s.GroupID)
+	if s.SubTServices().RunningSimulations().GetTransporter(s.GroupID).IsConnected() {
+		s.SubTServices().RunningSimulations().Free(s.GroupID)
 	}
 
-	err := s.Platform().RunningSimulations().Remove(s.GroupID)
+	err := s.SubTServices().RunningSimulations().Remove(s.GroupID)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func addRunningSimulation(store actions.Store, tx *gorm.DB, deployment *actions.
 	}
 
 	// Initialize a new RunningSimulation.
-	rs := runsim.NewRunningSimulation(s.GroupID, int64(t.MaxSimSeconds), sim.GetValidFor())
+	rs := runsim.NewRunningSimulation(sim)
 
 	err = s.WebsocketConnection.Subscribe(t.WarmupTopic, func(message transport.Message) {
 		_ = rs.ReadWarmup(context.Background(), message)
@@ -66,7 +66,7 @@ func addRunningSimulation(store actions.Store, tx *gorm.DB, deployment *actions.
 	}
 
 	// Add the running simulation and websocket connection to the Running Simulation manager.
-	err = s.Platform().RunningSimulations().Add(s.GroupID, rs, s.WebsocketConnection)
+	err = s.SubTServices().RunningSimulations().Add(s.GroupID, rs, s.WebsocketConnection)
 	if err != nil {
 		return nil, err
 	}

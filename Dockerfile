@@ -21,10 +21,10 @@ FROM registry.gitlab.com/ignitionrobotics/web/images/cloudsim-base:1.1.0
 
 WORKDIR /app
 
-COPY --from=builder /go/bin/cloudsim .
+COPY --from=builder /go/bin/subt .
 COPY . .
 
 ENTRYPOINT [ "./docker-entrypoint.sh" ]
-CMD ["./cloudsim"]
+CMD ["./subt"]
 
 EXPOSE 8001
