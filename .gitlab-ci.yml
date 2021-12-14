@@ -121,27 +121,21 @@ lint:
   tags:
     - gitlab-org
 
-###########################################################
-## Testing stage
-
 vet:
-  stage: test
+  stage: format
   extends: .go-cache
   dependencies:
     - proto
   before_script:
     - *setup_modules
     - *setup_git_credentials
-    - *setup_db
   script:
     - go vet $(go list ./...)
-  services:
-    - mysql:5.7
-  environment:
-    name: testing
-  allow_failure: true
   tags:
     - gitlab-org
+
+###########################################################
+## Testing stage
 
 test:
   stage: test
@@ -230,6 +224,7 @@ coverage:
     - "docker logout ${CI_REGISTRY}"
   tags:
     - docker
+  needs: [ "vet", "proto" ]
 
 # Tag docker images with the ref name for feature branches.
 # Ref names will have any forward slashes '/' converted to dashes '-'.
