@@ -299,14 +299,12 @@ aws ec2 authorize-security-group-egress --group-id sg-023c19380b48dcabb --protoc
       AMI base versions, visit [this site](https://docs.aws.amazon.com/eks/latest/userguide/eks-optimized-ami.html).
     - The GPU enabled AMIs are below the `x86 accelerated` column.
 - Added an X server configuration specific to G3 instance GPUs
+
 ```
-cat > /etc/X11/xorg.conf.d/nvidia.conf <<-EOF
-Section "Device"
-    Identifier     "NVIDIA"
-    Driver         "nvidia"
-    BusID          "0:30:0"
-EndSection
-EOF
+# Generate an X server configuration
+sudo X -configure
+# Copy the generated configuration to the X server configuration
+cp /root/xorg.conf.new /etc/X11/xorg.conf.d/generated.conf
 ``` 
 
 - Created a simple X server systemd service.
